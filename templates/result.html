@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LoanIQ — Result</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #111118; --surface2: #1a1a24;
+      --border: #2a2a38; --accent: #6c63ff; --text: #e8e8f0;
+      --muted: #6b6b80; --green: #00d68f; --red: #ff4d6d;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+    .app {
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(108,99,255,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(255,107,107,0.08) 0%, transparent 60%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    /* NAV */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.2rem 3rem; border-bottom: 1px solid var(--border);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); background: rgba(10,10,15,0.85);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo {
+      font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800;
+      background: linear-gradient(135deg, #6c63ff, #ff6b6b);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .back-btn {
+      padding: 0.5rem 1.2rem; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px;
+      color: var(--muted); text-decoration: none; font-size: 0.9rem;
+      transition: all 0.2s; font-family: 'DM Sans', sans-serif;
+    }
+    .back-btn:hover { color: var(--text); border-color: var(--accent); }
+
+    /* RESULT HERO */
+    .result-hero { text-align: center; padding: 3rem 2rem 2rem; }
+    .result-badge {
+      display: inline-flex; align-items: center; gap: 0.7rem;
+      padding: 1rem 2.5rem; border-radius: 100px;
+      font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800;
+      margin-bottom: 1.5rem; letter-spacing: -0.5px;
+    }
+    .approved { background: rgba(0,214,143,0.1); border: 2px solid rgba(0,214,143,0.4); color: var(--green); }
+    .rejected { background: rgba(255,77,109,0.1); border: 2px solid rgba(255,77,109,0.4); color: var(--red); }
+
+    .prob-wrap { max-width: 500px; margin: 0 auto 1rem; }
+    .prob-label { display: flex; justify-content: space-between; font-size: 0.95rem; color: var(--muted); margin-bottom: 0.5rem; }
+    .prob-track { height: 10px; background: var(--surface2); border-radius: 100px; overflow: hidden; border: 1px solid var(--border); }
+    .prob-fill { height: 100%; border-radius: 100px; }
+    .prob-fill.approved { background: linear-gradient(90deg, #00d68f, #00f5a0); }
+    .prob-fill.rejected { background: linear-gradient(90deg, #ff4d6d, #ff6b6b); }
+    .prob-fill { --width: 0%; width: var(--width); }
+    .prob-fill[data-width] { width: var(--width); --width: attr(data-width); }
+    .prob-fill[data-probability] { --width: attr(data-probability); }
+
+    /* CARDS */
+    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 960px; margin: 0 auto; padding: 0 2rem 4rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.8rem; }
+    .card.full { grid-column: 1 / -1; }
+    .card-title { font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 1.2rem; }
+
+    /* REASON */
+    .reason-item {
+      display: flex; align-items: flex-start; gap: 0.7rem;
+      padding: 0.85rem 1rem; background: rgba(255,77,109,0.07);
+      border: 1px solid rgba(255,77,109,0.2); border-radius: 10px;
+      margin-bottom: 0.6rem; font-size: 0.88rem; color: #ffb3c1; line-height: 1.5;
+    }
+
+    /* RECOMMENDATION */
+    .rec-item {
+      display: flex; align-items: flex-start; gap: 0.7rem;
+      padding: 0.85rem 1rem; background: rgba(108,99,255,0.07);
+      border: 1px solid rgba(108,99,255,0.2); border-radius: 10px;
+      margin-bottom: 0.6rem; font-size: 0.88rem; color: #c4bfff; line-height: 1.5;
+    }
+
+    .approved-msg { text-align: center; padding: 1.5rem; color: var(--green); font-size: 1rem; font-weight: 500; }
+
+    .shap-chart { width: 100%; border-radius: 12px; }
+
+    .apply-again {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.9rem 2rem; background: linear-gradient(135deg, #6c63ff, #8b84ff);
+      border: none; border-radius: 12px; color: white;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; text-decoration: none;
+      box-shadow: 0 8px 32px rgba(108,99,255,0.3); transition: all 0.2s;
+    }
+    .apply-again:hover { transform: translateY(-2px); }
+
+    .apply-again-card { text-align: center; padding: 2rem; }
+
+    .prob-value { font-weight: 700; }
+    .prob-value.approved { color: #00d68f; }
+    .prob-value.rejected { color: #ff4d6d; }
+
+    .chart-note { font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
+
+    .no-reasons { color: var(--muted); font-size: 0.9rem; }
+
+    @media (max-width: 700px) { .cards { grid-template-columns: 1fr; } nav { padding: 1rem; } }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <nav>
+    <div class="logo">LoanIQ</div>
+    <a href="/" class="back-btn">← Apply Again</a>
+  </nav>
+
+  <!-- Result Badge -->
+  <div class="result-hero">
+    {% if approved %}
+    <div class="result-badge approved">✅ Loan Approved!</div>
+    {% else %}
+    <div class="result-badge rejected">❌ Loan Rejected</div>
+    {% endif %}
+
+    <!-- Probability Bar -->
+    <div class="prob-wrap">
+      <div class="prob-label">
+        <span>Approval Probability</span>
+        <span class="prob-value {% if approved %}approved{% else %}rejected{% endif %}">{{ probability }}%</span>
+      </div>
+      <div class="prob-track">
+        <div class="prob-fill {% if approved %}approved{% else %}rejected{% endif %}" data-probability="{{ probability }}%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cards">
+
+    <!-- Reasons / Approval Message -->
+    <div class="card">
+      {% if approved %}
+      <div class="card-title">✅ Approval Factors</div>
+      <div class="approved-msg">
+        🎉 Your financial profile meets our lending criteria. Congratulations!
+      </div>
+      {% else %}
+      <div class="card-title">⚠️ Rejection Reasons</div>
+      {% if reasons %}
+        {% for reason in reasons %}
+        <div class="reason-item">⚠️ {{ reason }}</div>
+        {% endfor %}
+      {% else %}
+        <p class="no-reasons">No specific reasons identified.</p>
+      {% endif %}
+      {% endif %}
+    </div>
+
+    <!-- Recommendations -->
+    <div class="card">
+      <div class="card-title">💡 Recommendations</div>
+      {% if approved %}
+        <div class="rec-item">💡 Maintain your credit score and keep your DTI ratio low for continued financial health.</div>
+        <div class="rec-item">✅ Proceed with the loan process and ensure timely repayments.</div>
+      {% else %}
+        {% if recommendations %}
+          {% for rec in recommendations %}
+          <div class="rec-item">{{ rec }}</div>
+          {% endfor %}
+        {% else %}
+          <div class="rec-item">💡 Review your financial profile and consider reapplying after improvements.</div>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <!-- SHAP Chart -->
+    <div class="card full">
+      <div class="card-title">🧠 Feature Impact (SHAP Values)</div>
+      <p class="chart-note">
+        🟢 Green bars push toward approval &nbsp;·&nbsp; 🔴 Red bars push toward rejection
+      </p>
+      <img src="data:image/png;base64,{{ chart_b64 }}" class="shap-chart" alt="SHAP Feature Impact Chart"/>
+    </div>
+
+    <!-- Apply Again -->
+    <div class="card full apply-again-card">
+      <a href="/" class="apply-again">← Apply Again with Different Details</a>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
