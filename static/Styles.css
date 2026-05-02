@@ -42,6 +42,7 @@ nav {
   letter-spacing: -0.04em;
   background: linear-gradient(135deg, #6c63ff, #ff6b6b);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -57,7 +58,7 @@ nav {
 }
 
 .logout-link {
-  color: #ba1616;
+  color: #ff8ea2;
   text-decoration: none;
   font-weight: 600;
   background: rgba(255,255,255,0.05);
@@ -127,7 +128,7 @@ nav {
   font-size: 0.92rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  color: #b16767;
+  color: #9b97d4;
 }
 
 .form-grid {
@@ -161,16 +162,27 @@ select {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 14px;
-  color: #ba1616;
+  color: #e9ecf7;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 input:focus,
 select:focus {
-  border-color: #212120;
-  box-shadow: 0 0 0 5px rgba(221, 8, 8, 0.12);
-  background: rgba(166, 16, 16, 0.06);
+  border-color: #6c63ff;
+  box-shadow: 0 0 0 5px rgba(108, 99, 255, 0.14);
+  background: rgba(108, 99, 255, 0.06);
+}
+
+option {
+  background: #13152e;
+  color: #e9ecf7;
+}
+
+option:hover,
+option:checked {
+  background: #6c63ff;
+  color: #ffffff;
 }
 
 .submit-btn {
