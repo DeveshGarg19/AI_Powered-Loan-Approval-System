@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LoanIQ — My Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='Styles.css') }}"/>
+  <style>
+    /* ── Dashboard-specific styles ── */
+    .dash-header {
+      margin-bottom: 2.5rem;
+    }
+    .dash-header h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.8rem, 3vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin: 0 0 0.4rem;
+    }
+    .dash-header p {
+      color: #b8bdd7;
+      font-size: 0.97rem;
+      margin: 0;
+    }
+
+    /* ── Stat Cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+    .stat-card {
+      background: rgba(16, 18, 40, 0.88);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px;
+      padding: 1.5rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+    }
+    .stat-icon { font-size: 1.5rem; }
+    .stat-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .stat-label { font-size: 0.85rem; color: #9b97d4; }
+    .stat-card.approved .stat-value { color: #00d68f; }
+    .stat-card.rejected .stat-value { color: #ff4d6d; }
+    .stat-card.total   .stat-value { color: #6c63ff; }
+    .stat-card.avg     .stat-value { color: #ffb347; }
+
+    /* ── Applications Table ── */
+    .section-heading {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #e9ecf7;
+    }
+    .table-wrap {
+      background: rgba(16, 18, 40, 0.88);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 24px;
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead th {
+      padding: 1rem 1.2rem;
+      text-align: left;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #9b97d4;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.15s ease;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(108,99,255,0.06); }
+    tbody td {
+      padding: 0.95rem 1.2rem;
+      font-size: 0.92rem;
+      color: #c4c9e9;
+      vertical-align: middle;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .badge-approved {
+      background: rgba(0, 214, 143, 0.12);
+      color: #00d68f;
+      border: 1px solid rgba(0, 214, 143, 0.22);
+    }
+    .badge-rejected {
+      background: rgba(255, 77, 109, 0.12);
+      color: #ff4d6d;
+      border: 1px solid rgba(255, 77, 109, 0.22);
+    }
+    .prob-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      min-width: 120px;
+    }
+    .prob-bar-bg {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .prob-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #6c63ff, #00d68f);
+    }
+
+    .prob-text { font-size: 0.85rem; color: #e9ecf7; min-width: 38px; }
+    .table-index { color: #6c63ff; font-weight: 700; }
+
+    /* ── Empty State ── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #9b97d4;
+    }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty-state p { font-size: 0.97rem; margin-bottom: 1.5rem; }
+    .empty-state a {
+      display: inline-block;
+      padding: 0.85rem 2rem;
+      background: linear-gradient(135deg, #6c63ff, #8b84ff);
+      color: #fff;
+      border-radius: 14px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .empty-state a:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(108,99,255,0.28);
+    }
+
+    .nav-link {
+      color: #9b97d4;
+      text-decoration: none;
+      font-size: 0.92rem;
+      padding: 0.6rem 1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    .nav-link:hover { background: rgba(108,99,255,0.12); color: #6c63ff; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Nav -->
+  <nav>
+    <div class="logo">🏦 LoanIQ</div>
+    <div class="nav-container">
+      <a href="/" class="nav-link">🔍 New Application</a>
+      <span class="user-greeting">👋 {{ user_name }}</span>
+      <a href="/logout" class="logout-link">Logout →</a>
+    </div>
+  </nav>
+
+  <!-- Header -->
+  <div class="dash-header">
+    <h1>My Dashboard</h1>
+    <p>Track all your loan applications and their outcomes.</p>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stats-grid">
+    <div class="stat-card total">
+      <span class="stat-icon">📋</span>
+      <span class="stat-value">{{ total }}</span>
+      <span class="stat-label">Total Applications</span>
+    </div>
+    <div class="stat-card approved">
+      <span class="stat-icon">✅</span>
+      <span class="stat-value">{{ approved }}</span>
+      <span class="stat-label">Approved</span>
+    </div>
+    <div class="stat-card rejected">
+      <span class="stat-icon">❌</span>
+      <span class="stat-value">{{ rejected }}</span>
+      <span class="stat-label">Rejected</span>
+    </div>
+    <div class="stat-card avg">
+      <span class="stat-icon">📊</span>
+      <span class="stat-value">{{ avg_prob }}%</span>
+      <span class="stat-label">Avg. Approval Probability</span>
+    </div>
+  </div>
+
+  <!-- Application History -->
+  <div class="section-heading">📁 Application History</div>
+  <div class="table-wrap">
+    {% if applications %}
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Purpose</th>
+          <th>Income (₹)</th>
+          <th>Loan (₹)</th>
+          <th>Credit Score</th>
+          <th>DTI Ratio</th>
+          <th>Probability</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for app in applications %}
+        <tr>
+          <td style="color:#6c63ff; font-weight:700;">{{ loop.index }}</td>
+          <td>{{ (app.created_at | to_ist).strftime('%d %b %Y, %I:%M %p') }} IST</td>
+          <td>{{ app.loan_purpose or '—' }}</td>
+          <td>₹{{ "{:,.0f}".format(app.income) if app.income else '—' }}</td>
+          <td>₹{{ "{:,.0f}".format(app.loan_amount) if app.loan_amount else '—' }}</td>
+          <td>{{ app.credit_score | int if app.credit_score else '—' }}</td>
+          <td>{{ app.dti_ratio if app.dti_ratio else '—' }}</td>
+          <td>
+            <div class="prob-bar-wrap">
+              <div class="prob-bar-bg">
+                <div class="prob-bar-fill" style="--w: {{ app.probability }}%;"></div>
+              </div>
+              <span class="prob-text">{{ app.probability }}%</span>
+            </div>
+          </td>
+          <td>
+            {% if app.approved %}
+              <span class="badge badge-approved">✅ Approved</span>
+            {% else %}
+              <span class="badge badge-rejected">❌ Rejected</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <p>No applications yet. Submit your first loan application to see results here.</p>
+      <a href="/">🔍 Apply Now</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+</body>
+</html>

@@ -20,7 +20,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import base64, io, random, string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 app = Flask(__name__)
@@ -77,6 +77,16 @@ scaler        = pickle.load(open(os.path.join(SAVE_PATH, 'scaler.pkl'), 'rb'))
 ohe           = pickle.load(open(os.path.join(SAVE_PATH, 'ohe_encoder.pkl'), 'rb'))
 feature_names = pickle.load(open(os.path.join(SAVE_PATH, 'feature_names.pkl'), 'rb'))
 print("✅ All models loaded!")
+
+# ─── Jinja2 Filters ──────────────────────────────────────────────────────────
+IST_OFFSET = timedelta(hours=5, minutes=30)
+
+@app.template_filter('to_ist')
+def to_ist(dt):
+    """Convert a naive UTC datetime to IST (UTC+5:30)."""
+    if dt is None:
+        return ''
+    return dt + IST_OFFSET
 
 # ─── Helper Functions ────────────────────────────────────────────────────────
 def login_required(f):
