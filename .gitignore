@@ -1,0 +1,23 @@
+# ML Model binaries (keep locally, not needed on GitHub)
+ML_Model/*.pkl
+
+# Dataset (large file, not needed on GitHub)
+*.csv
+
+# SQLite database (local data, should not be shared)
+*.db
+instance/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
