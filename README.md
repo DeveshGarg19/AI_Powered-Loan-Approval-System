@@ -1,5 +1,9 @@
 # 🏦 LoanIQ - AI-Powered Loan Approval System
 
+🚀 **Live Demo:** [loaniq-ai-powered-loan-approval-sys.vercel.app](https://loaniq-ai-powered-loan-approval-sys.vercel.app/)
+
+---
+
 **LoanIQ** is an intelligent web application built with Flask that utilizes Machine Learning to predict whether a loan application will be approved or rejected. Not only does it provide a prediction, but it also uses **SHAP** (SHapley Additive exPlanations) to explain *why* a decision was made and offers actionable recommendations to the user.
 
 ---
