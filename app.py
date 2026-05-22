@@ -14,18 +14,27 @@ app = Flask(__name__)
 # ─── Config ─────────────────────────────────────────────────────────────────
 app.secret_key = "loaniq_secret_key_2024"
 
-# Dynamic path resolution for SQLite database (local development and Vercel compatibility)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if os.environ.get("VERCEL"):
-    db_path = '/tmp/database.db'
-    src_db = os.path.join(BASE_DIR, 'database.db')
-    if not os.path.exists(db_path) and os.path.exists(src_db):
-        import shutil
-        shutil.copy(src_db, db_path)
+# Database Configuration
+# Uses PostgreSQL if DATABASE_URL is present (perfect for Vercel persistence),
+# otherwise falls back to local SQLite for offline development.
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if DATABASE_URL:
+    # Fix potential postgres:// to postgresql:// scheme issue for SQLAlchemy
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 else:
-    db_path = os.path.join(BASE_DIR, 'database.db')
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    if os.environ.get("VERCEL"):
+        db_path = '/tmp/database.db'
+        src_db = os.path.join(BASE_DIR, 'database.db')
+        if not os.path.exists(db_path) and os.path.exists(src_db):
+            import shutil
+            shutil.copy(src_db, db_path)
+    else:
+        db_path = os.path.join(BASE_DIR, 'database.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # ─── Gmail Config ────────────────────────────────────────────────────────────
