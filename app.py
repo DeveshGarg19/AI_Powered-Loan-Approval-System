@@ -4,7 +4,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
-import pickle, numpy as np, pandas as pd, shap
 import base64, io, random, string
 from datetime import datetime, timedelta, timezone
 from functools import wraps
@@ -77,13 +76,24 @@ class Application(db.Model):
 with app.app_context():
     db.create_all()
 
-# ─── Load ML Models ──────────────────────────────────────────────────────────
-SAVE_PATH     = os.path.join(BASE_DIR, 'Ml_Model')
-model         = pickle.load(open(os.path.join(SAVE_PATH, 'model.pkl'), 'rb'))
-scaler        = pickle.load(open(os.path.join(SAVE_PATH, 'scaler.pkl'), 'rb'))
-ohe           = pickle.load(open(os.path.join(SAVE_PATH, 'ohe_encoder.pkl'), 'rb'))
-feature_names = pickle.load(open(os.path.join(SAVE_PATH, 'feature_names.pkl'), 'rb'))
-print("✅ All models loaded!")
+# ─── Load ML Models (Lazy Loading) ───────────────────────────────────────────
+# Models are loaded lazily and cached globally to prevent Vercel Serverless Function timeouts
+_ml_model = None
+_ml_scaler = None
+_ml_ohe = None
+_ml_feature_names = None
+
+def get_ml_resources():
+    global _ml_model, _ml_scaler, _ml_ohe, _ml_feature_names
+    if _ml_model is None:
+        import pickle
+        SAVE_PATH = os.path.join(BASE_DIR, 'Ml_Model')
+        _ml_model = pickle.load(open(os.path.join(SAVE_PATH, 'model.pkl'), 'rb'))
+        _ml_scaler = pickle.load(open(os.path.join(SAVE_PATH, 'scaler.pkl'), 'rb'))
+        _ml_ohe = pickle.load(open(os.path.join(SAVE_PATH, 'ohe_encoder.pkl'), 'rb'))
+        _ml_feature_names = pickle.load(open(os.path.join(SAVE_PATH, 'feature_names.pkl'), 'rb'))
+        print("✅ Lazy-loaded all machine learning models successfully!")
+    return _ml_model, _ml_scaler, _ml_ohe, _ml_feature_names
 
 # ─── Jinja2 Filters ──────────────────────────────────────────────────────────
 IST_OFFSET = timedelta(hours=5, minutes=30)
@@ -303,6 +313,14 @@ def dashboard():
 @login_required
 def predict():
     try:
+        # Lazy imports to optimize serverless cold-start performance
+        import pandas as pd
+        import numpy as np
+        import shap
+
+        # Load ML resources lazily
+        model, scaler, ohe, feature_names = get_ml_resources()
+
         data = request.form
 
         raw = pd.DataFrame([{
