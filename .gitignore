@@ -1,5 +1,4 @@
-# ML Model binaries (keep locally, not needed on GitHub)
-ML_Model/*.pkl
+# ML Model binaries (tracked so Vercel can load the model)
 
 # Dataset (large file, not needed on GitHub)
 *.csv
