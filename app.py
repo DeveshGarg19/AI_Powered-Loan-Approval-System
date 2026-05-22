@@ -1,15 +1,4 @@
-
 import sys, subprocess, os
-
-if os.environ.get("FLASK_RUNNING") != "1":
-    os.environ["FLASK_RUNNING"] = "1"
-    import webbrowser
-    from threading import Timer
-    Timer(1.5, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
-    sys.exit(subprocess.call(
-        ["C:/Program Files/Python313/python.exe", "-m", "flask", "--app", __file__, "run", "--debug"],
-        shell=False
-    ))
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -27,7 +16,19 @@ app = Flask(__name__)
 
 # ─── Config ─────────────────────────────────────────────────────────────────
 app.secret_key = "loaniq_secret_key_2024"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/Sem6_Proj/database.db'
+
+# Dynamic path resolution for SQLite database (local development and Vercel compatibility)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if os.environ.get("VERCEL"):
+    db_path = '/tmp/database.db'
+    src_db = os.path.join(BASE_DIR, 'database.db')
+    if not os.path.exists(db_path) and os.path.exists(src_db):
+        import shutil
+        shutil.copy(src_db, db_path)
+else:
+    db_path = os.path.join(BASE_DIR, 'database.db')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # ─── Gmail Config ────────────────────────────────────────────────────────────
@@ -71,7 +72,7 @@ with app.app_context():
     db.create_all()
 
 # ─── Load ML Models ──────────────────────────────────────────────────────────
-SAVE_PATH     = r'C:\Sem6_Proj\Ml_Model'
+SAVE_PATH     = os.path.join(BASE_DIR, 'Ml_Model')
 model         = pickle.load(open(os.path.join(SAVE_PATH, 'model.pkl'), 'rb'))
 scaler        = pickle.load(open(os.path.join(SAVE_PATH, 'scaler.pkl'), 'rb'))
 ohe           = pickle.load(open(os.path.join(SAVE_PATH, 'ohe_encoder.pkl'), 'rb'))
@@ -419,4 +420,13 @@ def predict():
         return render_template('index.html', error=str(e), user_name=session.get('user_name'))
 
 if __name__ == '__main__':
+    if os.environ.get("FLASK_RUNNING") != "1":
+        os.environ["FLASK_RUNNING"] = "1"
+        import webbrowser
+        from threading import Timer
+        Timer(1.5, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
+        sys.exit(subprocess.call(
+            ["C:/Program Files/Python313/python.exe", "-m", "flask", "--app", __file__, "run", "--debug"],
+            shell=False
+        ))
     app.run(debug=True)
