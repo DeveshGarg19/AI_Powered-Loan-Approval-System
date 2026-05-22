@@ -4,5 +4,4 @@ Flask-Mail
 numpy
 pandas
 shap
-matplotlib
 scikit-learn

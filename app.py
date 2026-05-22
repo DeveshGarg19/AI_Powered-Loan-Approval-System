@@ -5,9 +5,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 import pickle, numpy as np, pandas as pd, shap
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import base64, io, random, string
 from datetime import datetime, timedelta, timezone
 from functools import wraps
@@ -377,30 +374,13 @@ def predict():
         except:
             pass  # Don't fail if email fails
 
-        # SHAP Chart
-        shap_df = pd.DataFrame(list(shap_dict.items()), columns=["Feature","SHAP Value"])
-        shap_df["Feature"] = shap_df["Feature"].str.replace("_"," ")
-        shap_df["abs"]     = shap_df["SHAP Value"].abs()
-        shap_df            = shap_df.sort_values("abs", ascending=False).head(10)
-        shap_df            = shap_df.sort_values("SHAP Value", ascending=True)
-
-        chart_colors = ["#ff4d6d" if v < 0 else "#00d68f" for v in shap_df["SHAP Value"]]
-        fig, ax = plt.subplots(figsize=(8,5))
-        fig.patch.set_facecolor('#1a1a2e')
-        ax.set_facecolor('#1a1a2e')
-        ax.barh(shap_df["Feature"], shap_df["SHAP Value"], color=chart_colors)
-        ax.axvline(0, color='white', linewidth=0.8, alpha=0.5)
-        ax.tick_params(colors='white', labelsize=9)
-        ax.spines[:].set_visible(False)
-        ax.set_xlabel("SHAP Value", color='white', fontsize=10)
-        ax.set_title("Top Feature Impacts", color='white', fontsize=12, pad=10)
-        plt.tight_layout()
-
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', facecolor='#1a1a2e')
-        buf.seek(0)
-        chart_b64 = base64.b64encode(buf.read()).decode('utf-8')
-        plt.close()
+        # Extract features and SHAP values for modern dynamic browser-side rendering (Chart.js/ApexCharts)
+        # This completely replaces the heavy matplotlib server-side rendering, saving 50+ MB of bundle space!
+        sorted_shap = sorted(shap_dict.items(), key=lambda x: abs(x[1]), reverse=True)[:10]
+        sorted_shap = sorted(sorted_shap, key=lambda x: x[1])  # Sort ascending for horizontal bar chart
+        
+        chart_features = [x[0].replace('_', ' ').title() for x in sorted_shap]
+        chart_values = [round(x[1], 4) for x in sorted_shap]
 
         session['result'] = {
             'approved': bool(prediction), 'probability': probability,
@@ -411,7 +391,8 @@ def predict():
         return render_template('result.html',
             approved=bool(prediction), probability=probability,
             reasons=reasons, recommendations=recommendations,
-            chart_b64=chart_b64, user_name=session.get('user_name')
+            chart_features=chart_features, chart_values=chart_values,
+            user_name=session.get('user_name')
         )
 
     except Exception as e:

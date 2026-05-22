@@ -4,5 +4,10 @@
       "source": "/(.*)",
       "destination": "/api/index"
     }
-  ]
+  ],
+  "functions": {
+    "api/index.py": {
+      "excludeFiles": "proj.ipynb, loan_approval_data.csv, database.db, README.md, instance/**, .git/**"
+    }
+  }
 }

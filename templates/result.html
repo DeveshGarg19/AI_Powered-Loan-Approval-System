@@ -177,7 +177,7 @@
       <p class="chart-note">
         🟢 Green bars push toward approval &nbsp;·&nbsp; 🔴 Red bars push toward rejection
       </p>
-      <img src="data:image/png;base64,{{ chart_b64 }}" class="shap-chart" alt="SHAP Feature Impact Chart"/>
+      <div id="shapChart"></div>
     </div>
 
     <!-- Apply Again -->
@@ -187,5 +187,97 @@
 
   </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var features = {{ chart_features | tojson }};
+    var values = {{ chart_values | tojson }};
+
+    // Map colors: positive is green, negative is red
+    var colors = values.map(function(val) {
+      return val >= 0 ? '#00d68f' : '#ff4d6d';
+    });
+
+    var options = {
+      series: [{
+        name: 'SHAP Value',
+        data: values
+      }],
+      chart: {
+        type: 'bar',
+        height: 380,
+        toolbar: { show: false },
+        background: 'transparent'
+      },
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          barHeight: '70%',
+          distributed: true,
+          borderRadius: 4
+        }
+      },
+      colors: colors,
+      dataLabels: {
+        enabled: true,
+        formatter: function(val) {
+          return val.toFixed(4);
+        },
+        style: {
+          colors: ['#fff'],
+          fontSize: '11px',
+          fontFamily: 'DM Sans, sans-serif'
+        },
+        offsetX: 10
+      },
+      grid: {
+        borderColor: '#2a2a38',
+        xaxis: {
+          lines: { show: true }
+        },
+        yaxis: {
+          lines: { show: false }
+        }
+      },
+      xaxis: {
+        categories: features,
+        labels: {
+          style: {
+            colors: '#6b6b80',
+            fontFamily: 'DM Sans, sans-serif',
+            fontSize: '11px'
+          }
+        },
+        axisBorder: { show: false },
+        axisTicks: { show: false }
+      },
+      yaxis: {
+        labels: {
+          style: {
+            colors: '#e8e8f0',
+            fontFamily: 'DM Sans, sans-serif',
+            fontWeight: 500,
+            fontSize: '12px'
+          }
+        }
+      },
+      tooltip: {
+        theme: 'dark',
+        x: { show: true },
+        y: {
+          formatter: function(val) {
+            return val > 0 
+              ? 'Adds ' + val.toFixed(4) + ' to approval score' 
+              : 'Subtracts ' + Math.abs(val).toFixed(4) + ' from approval score';
+          }
+        }
+      },
+      legend: { show: false }
+    };
+
+    var chart = new ApexCharts(document.querySelector("#shapChart"), options);
+    chart.render();
+  });
+</script>
 </body>
 </html>
