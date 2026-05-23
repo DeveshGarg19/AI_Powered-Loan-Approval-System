@@ -357,7 +357,7 @@ def predict():
 
         scaled      = scaler.transform(raw)
         THRESHOLD   = 0.45
-        probability = round(model.predict_proba(scaled)[0][1] * 100, 1)
+        probability = float(round(model.predict_proba(scaled)[0][1] * 100, 1))
         prediction  = 1 if (probability / 100) >= THRESHOLD else 0
 
         background = np.zeros((1, len(feature_names)))
