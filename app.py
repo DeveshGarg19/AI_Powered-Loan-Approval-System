@@ -14,6 +14,8 @@ app = Flask(__name__)
 app.secret_key = "loaniq_secret_key_2024"
 
 # Database Configuration
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Uses PostgreSQL if DATABASE_URL is present (perfect for Vercel persistence),
 # otherwise falls back to local SQLite for offline development.
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -23,7 +25,6 @@ if DATABASE_URL:
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     if os.environ.get("VERCEL"):
         db_path = '/tmp/database.db'
         src_db = os.path.join(BASE_DIR, 'database.db')
