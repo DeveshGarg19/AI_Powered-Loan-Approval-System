@@ -132,9 +132,10 @@
     }
     .prob-bar-fill {
       height: 100%;
-      width: 0%;
+      width: var(--w, 0%);
       border-radius: 999px;
       background: linear-gradient(90deg, #6c63ff, #00d68f);
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .prob-text { font-size: 0.85rem; color: #e9ecf7; min-width: 38px; }
@@ -185,6 +186,7 @@
     <div class="logo">🏦 LoanIQ</div>
     <div class="nav-container">
       <a href="/" class="nav-link">🔍 New Application</a>
+      <a href="/emi" class="nav-link">📊 EMI Calculator</a>
       <span class="user-greeting">👋 {{ user_name }}</span>
       <a href="/logout" class="logout-link">Logout →</a>
     </div>

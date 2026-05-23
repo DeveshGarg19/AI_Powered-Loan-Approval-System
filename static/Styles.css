@@ -214,3 +214,123 @@ option:checked {
     align-items: flex-start;
   }
 }
+
+/* ─── Global Navigation Links ─── */
+.nav-link {
+  color: #9b97d4;
+  text-decoration: none;
+  font-size: 0.92rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nav-link:hover {
+  background: rgba(108, 99, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(108, 99, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.nav-link:active {
+  transform: translateY(0);
+}
+
+/* ─── Range Slider Overrides ─── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 99px;
+  outline: none;
+  padding: 0;
+  min-height: 0;
+  transition: background 0.2s ease;
+}
+
+input[type="range"]:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #6c63ff;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(108, 99, 255, 0.5);
+  transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: #8b84ff;
+  transform: scale(1.15);
+  box-shadow: 0 0 15px rgba(108, 99, 255, 0.8);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+}
+
+/* Mozilla Firefox overrides */
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: #6c63ff;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(108, 99, 255, 0.5);
+  transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+input[type="range"]::-moz-range-thumb:hover {
+  background: #8b84ff;
+  transform: scale(1.15);
+}
+
+/* ─── Unified Premium Table Styles ─── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  padding: 1rem 1.2rem;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9b97d4;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+
+tbody tr:last-child {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: rgba(108, 99, 255, 0.06);
+}
+
+tbody td {
+  padding: 0.95rem 1.2rem;
+  font-size: 0.92rem;
+  color: #c4c9e9;
+  vertical-align: middle;
+}

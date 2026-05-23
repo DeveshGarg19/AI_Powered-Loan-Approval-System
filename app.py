@@ -310,6 +310,11 @@ def dashboard():
         rejected=rejected, avg_prob=avg_prob
     )
 
+@app.route('/emi')
+@login_required
+def emi():
+    return render_template('emi.html', user_name=session.get('user_name'))
+
 @app.route('/predict', methods=['POST'])
 @login_required
 def predict():
