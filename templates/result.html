@@ -109,8 +109,8 @@
 <div class="app">
 
   <nav>
-    <div class="logo">LoanIQ</div>
-    <a href="/" class="back-btn">← Apply Again</a>
+    <a href="/" class="logo" style="text-decoration: none;">LoanIQ</a>
+    <a href="/apply" class="back-btn">← Apply Again</a>
   </nav>
 
   <!-- Result Badge -->
@@ -177,12 +177,12 @@
       <p class="chart-note">
         🟢 Green bars push toward approval &nbsp;·&nbsp; 🔴 Red bars push toward rejection
       </p>
-      <div id="shapChart"></div>
+      <div id="shapChart" data-features='{{ chart_features | tojson | safe }}' data-values='{{ chart_values | tojson | safe }}'></div>
     </div>
 
     <!-- Apply Again -->
     <div class="card full apply-again-card">
-      <a href="/" class="apply-again">← Apply Again with Different Details</a>
+      <a href="/apply" class="apply-again">← Apply Again with Different Details</a>
     </div>
 
   </div>
@@ -190,8 +190,9 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    var features = {{ chart_features | tojson }};
-    var values = {{ chart_values | tojson }};
+    var chartEl = document.getElementById("shapChart");
+    var features = JSON.parse(chartEl.getAttribute("data-features"));
+    var values = JSON.parse(chartEl.getAttribute("data-values"));
 
     // Map colors: positive is green, negative is red
     var colors = values.map(function(val) {

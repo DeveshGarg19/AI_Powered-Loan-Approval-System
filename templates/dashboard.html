@@ -183,9 +183,9 @@
 
   <!-- Nav -->
   <nav>
-    <div class="logo">🏦 LoanIQ</div>
+    <a href="/" class="logo" style="text-decoration: none;">🏦 LoanIQ</a>
     <div class="nav-container">
-      <a href="/" class="nav-link">🔍 New Application</a>
+      <a href="/apply" class="nav-link">🔍 New Application</a>
       <a href="/emi" class="nav-link">📊 EMI Calculator</a>
       <span class="user-greeting">👋 {{ user_name }}</span>
       <a href="/logout" class="logout-link">Logout →</a>
@@ -273,7 +273,7 @@
     <div class="empty-state">
       <div class="empty-icon">📭</div>
       <p>No applications yet. Submit your first loan application to see results here.</p>
-      <a href="/">🔍 Apply Now</a>
+      <a href="/apply">🔍 Apply Now</a>
     </div>
     {% endif %}
   </div>

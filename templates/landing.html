@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LoanIQ — AI-Powered Loan Decision Intelligence & Explainability</title>
+  <meta name="description" content="Predict loan approvals instantly with LoanIQ's Explainable AI (XAI) engine. Get precise SHAP-based breakdowns and actionable steps to improve your creditworthiness." />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='Styles.css') }}"/>
+</head>
+<body>
+<div class="app landing-container">
+  <!-- Nav Bar -->
+  <nav class="landing-nav">
+    <div class="logo">🏦 LoanIQ</div>
+    <div class="nav-container">
+      <a href="#features" class="nav-link scroll-link">✨ Features</a>
+      <a href="#how-it-works" class="nav-link scroll-link">⚙️ How It Works</a>
+      <a href="/emi" class="nav-link">📊 EMI Calculator</a>
+      
+      {% if logged_in %}
+        <a href="/dashboard" class="nav-link">📁 Dashboard</a>
+        <span class="user-greeting">👋 {{ user_name }}</span>
+        <a href="/logout" class="logout-link">Logout →</a>
+      {% else %}
+        <a href="/login" class="nav-link">Sign In</a>
+        <a href="/register" class="logout-link highlight-btn">Get Started →</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero-section">
+    <div class="hero-text-content">
+      <div class="badge-new">⚡ Powered by Scikit-Learn & SHAP</div>
+      <h1>Predict Loan Approval <br/><span>With Full AI Clarity</span></h1>
+      <p class="hero-subtext">
+        Get instant, data-backed loan approval predictions. No black-box algorithms. We use Explainable AI (XAI) to show you exactly which financial metrics influence your result, and provide actionable tips to improve.
+      </p>
+      <div class="hero-actions">
+        {% if logged_in %}
+          <a href="/apply" class="submit-btn main-cta">🚀 Analyze Your Loan Now →</a>
+          <a href="/dashboard" class="nav-link outline-cta">View My History</a>
+        {% else %}
+          <a href="/register" class="submit-btn main-cta">🚀 Try Free Predictor →</a>
+          <a href="/login" class="nav-link outline-cta">Sign In to Dashboard</a>
+        {% endif %}
+      </div>
+    </div>
+    
+    <!-- Interactive Simulation Widget -->
+    <div class="hero-visual-card">
+      <div class="visual-header">
+        <span class="visual-dot red"></span>
+        <span class="visual-dot yellow"></span>
+        <span class="visual-dot green"></span>
+        <span class="visual-title">LoanIQ AI Simulator</span>
+      </div>
+      <div class="visual-content">
+        <p class="sim-intro">Adjust sliders to see simulated AI response instantly:</p>
+        
+        <div class="sim-sliders">
+          <div class="sim-group">
+            <div class="sim-label-row">
+              <label for="sim-credit">Credit Score</label>
+              <span id="sim-credit-val">720</span>
+            </div>
+            <input type="range" id="sim-credit" min="300" max="900" value="720" oninput="updateSimulator()"/>
+          </div>
+
+          <div class="sim-group">
+            <div class="sim-label-row">
+              <label for="sim-dti">Debt-to-Income (DTI)</label>
+              <span id="sim-dti-val">0.25</span>
+            </div>
+            <input type="range" id="sim-dti" min="0" max="1" step="0.05" value="0.25" oninput="updateSimulator()"/>
+          </div>
+
+          <div class="sim-group">
+            <div class="sim-label-row">
+              <label for="sim-income">Monthly Income (₹)</label>
+              <span id="sim-income-val">₹60,000</span>
+            </div>
+            <input type="range" id="sim-income" min="10000" max="250000" step="5000" value="60000" oninput="updateSimulator()"/>
+          </div>
+
+          <div class="sim-group">
+            <div class="sim-label-row">
+              <label for="sim-loan">Loan Amount Requested (₹)</label>
+              <span id="sim-loan-val">₹250,000</span>
+            </div>
+            <input type="range" id="sim-loan" min="10000" max="1000000" step="10000" value="250000" oninput="updateSimulator()"/>
+          </div>
+        </div>
+
+        <div class="sim-result-box">
+          <div class="sim-gauge-title">Approval Probability</div>
+          <div class="prob-bar-wrap">
+            <div class="prob-bar-bg">
+              <div class="prob-bar-fill" id="sim-gauge" style="--w: 78%;"></div>
+            </div>
+            <span class="prob-text" id="sim-percentage">78%</span>
+          </div>
+          <div id="sim-badge" class="sim-status-badge approved">✅ Highly Likely Approved</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features Grid -->
+  <section id="features" class="section-container">
+    <div class="section-intro">
+      <h2>Why Choose <span>LoanIQ</span>?</h2>
+      <p>We combine advanced machine learning with complete transparency for applicants.</p>
+    </div>
+    
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🤖</div>
+        <h3>AI Loan Prediction</h3>
+        <p>Uses a highly trained Scikit-Learn Random Forest model to evaluate multi-dimensional applicant risk profiles in milliseconds.</p>
+      </div>
+      
+      <div class="feature-card animate-hover">
+        <div class="feature-icon">📊</div>
+        <h3>Explainable AI (SHAP)</h3>
+        <p>No mystery decisions. We leverage SHAP values to chart exactly which positive or negative factors impacted your credit result.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">💡</div>
+        <h3>Actionable Advice</h3>
+        <p>Receive immediate, tailored recommendations on what to adjust (e.g., lower your DTI, reduce loan term) to shift chances in your favor.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔐</div>
+        <h3>OTP Secure Accounts</h3>
+        <p>Keep your records completely private with auto-generated secure OTP verification delivered straight to your email inbox.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📁</div>
+        <h3>Personal Dashboard</h3>
+        <p>Access your past application records, compare outcomes, track average probability stats, and monitor approval growth indicators.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">✉️</div>
+        <h3>Email Notifications</h3>
+        <p>Receive comprehensive summaries of predictions, metrics, and recommendations via automated emails upon application evaluation.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section id="how-it-works" class="section-container border-top">
+    <div class="section-intro">
+      <h2>How It <span>Works</span></h2>
+      <p>Follow four simple steps to analyze your credit worthiness.</p>
+    </div>
+    
+    <div class="timeline-steps">
+      <div class="timeline-step">
+        <div class="step-num">1</div>
+        <h4>Create Account</h4>
+        <p>Sign up in under a minute. Secure registration verify with a one-time OTP sent directly to your email.</p>
+      </div>
+      
+      <div class="timeline-step">
+        <div class="step-num">2</div>
+        <h4>Input Variables</h4>
+        <p>Enter details like DTI Ratio, Credit Score, Applicant Income, and Savings inside our clean application form.</p>
+      </div>
+
+      <div class="timeline-step">
+        <div class="step-num">3</div>
+        <h4>AI Risk Assessment</h4>
+        <p>Our predictive backend scales features and estimates approval likelihood, bypassing long banking queues.</p>
+      </div>
+
+      <div class="timeline-step">
+        <div class="step-num">4</div>
+        <h4>View SHAP & Improve</h4>
+        <p>Inspect feature impacts via interactive horizontal charts and follow customized action plans to qualify.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive FAQ Accordion -->
+  <section class="section-container border-top">
+    <div class="section-intro">
+      <h2>Frequently Asked <span>Questions</span></h2>
+      <p>Have questions? We have answers. If you need more info, reach out to our team.</p>
+    </div>
+    
+    <div class="faq-accordion">
+      <div class="faq-item">
+        <button class="faq-trigger" onclick="toggleFaq(this)">
+          <span>What is Explainable AI (XAI) and why is it used?</span>
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-content">
+          <p>Explainable AI refers to methods and techniques in the application of artificial intelligence technology such that the results of the solution can be understood by human experts. Standard machine learning models are "black boxes" — they give a prediction but not the reasoning. LoanIQ uses SHAP (SHapley Additive exPlanations) values to make the model transparent. It decomposes the final score to show exactly how much each feature (like your debt ratio or credit score) pushed your approval probability up or down.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-trigger" onclick="toggleFaq(this)">
+          <span>How does the model calculate the loan approval prediction?</span>
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-content">
+          <p>Our system uses a trained Machine Learning model (Random Forest Classifier) that analyzes historical loan data. It evaluates 15 key features including DTI Ratio, Credit Score, Savings, Age, Applicant Income, and Loan Purpose. The prediction threshold is set at 45% probability; if the model assesses your chance at 45% or higher, your loan is predicted as Approved.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-trigger" onclick="toggleFaq(this)">
+          <span>Is my financial data secure on LoanIQ?</span>
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-content">
+          <p>Yes. LoanIQ implements strict safety layers, including password hashing via Werkzeug security libraries, user session tracking, and email-based OTP verification. Your private records are stored safely in an isolated relational database.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-trigger" onclick="toggleFaq(this)">
+          <span>How accurate is the loan prediction?</span>
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-content">
+          <p>The model is trained on a robust synthetic loan dataset containing variables corresponding to real-world underwriting requirements. While the system serves as a powerful estimation tool and helps you understand underwriting logic, it is for educational and advisory purposes and does not guarantee formal bank credit approvals.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Footer Section -->
+  <section class="section-container border-top cta-banner-section">
+    <div class="cta-banner-content">
+      <h3>Ready to Check Your Status?</h3>
+      <p>Join thousands of users checking their financial profiles with transparency. Sign up now and test your loan probability instantly.</p>
+      <div class="cta-banner-buttons">
+        {% if logged_in %}
+          <a href="/apply" class="submit-btn cta-glow">Start Application →</a>
+        {% else %}
+          <a href="/register" class="submit-btn cta-glow">Register Account Now</a>
+          <a href="/login" class="nav-link ghost-btn">Sign In Instead</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="landing-footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="logo">🏦 LoanIQ</div>
+        <p>Explainable Loan Approval Predictions Powered by Machine Learning.</p>
+      </div>
+      <div class="footer-links-group">
+        <div class="footer-col">
+          <h5>System</h5>
+          <a href="/emi">EMI Calculator</a>
+          {% if logged_in %}
+            <a href="/dashboard">Dashboard</a>
+            <a href="/apply">New Application</a>
+          {% else %}
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+          {% endif %}
+        </div>
+        <div class="footer-col">
+          <h5>Built With</h5>
+          <span>Flask Backend</span>
+          <span>Scikit-Learn</span>
+          <span>SHAP Explainability</span>
+          <span>SQLite</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 LoanIQ. All rights reserved.</p>
+    </div>
+  </footer>
+</div>
+
+<!-- Interactive simulation script -->
+<script>
+  function updateSimulator() {
+    const credit = parseFloat(document.getElementById('sim-credit').value);
+    const dti = parseFloat(document.getElementById('sim-dti').value);
+    const income = parseFloat(document.getElementById('sim-income').value);
+    const loan = parseFloat(document.getElementById('sim-loan').value);
+
+    // Update labels
+    document.getElementById('sim-credit-val').textContent = credit;
+    document.getElementById('sim-dti-val').textContent = dti;
+    document.getElementById('sim-income-val').textContent = '₹' + income.toLocaleString('en-IN');
+    document.getElementById('sim-loan-val').textContent = '₹' + loan.toLocaleString('en-IN');
+
+    // Prediction simulation formula (heuristic approximating ML models)
+    let score = 55; // Base probability
+
+    // Credit score impact: max +35%, min -40%
+    if (credit >= 750) {
+      score += ((credit - 750) / 150) * 15 + 20;
+    } else {
+      score -= ((750 - credit) / 450) * 45;
+    }
+
+    // DTI ratio impact: low DTI (< 0.3) helps, high DTI hurts badly
+    if (dti <= 0.3) {
+      score += (0.3 - dti) * 45;
+    } else {
+      score -= (dti - 0.3) * 85;
+    }
+
+    // Debt to annual income ratio
+    const annualIncome = income * 12;
+    const loanToIncomeRatio = loan / (annualIncome || 1);
+    if (loanToIncomeRatio > 4) {
+      score -= 30;
+    } else if (loanToIncomeRatio < 1.5) {
+      score += 12;
+    }
+
+    // Clamp score between 5% and 98%
+    score = Math.min(Math.max(Math.round(score), 5), 98);
+
+    // Update progress bar & percentage indicator
+    const gauge = document.getElementById('sim-gauge');
+    const pct = document.getElementById('sim-percentage');
+    const badge = document.getElementById('sim-badge');
+
+    pct.textContent = score + '%';
+    gauge.style.setProperty('--w', score + '%');
+
+    // Threshold matching app.py (0.45 threshold -> 45%)
+    if (score >= 45) {
+      badge.textContent = '✅ Highly Likely Approved';
+      badge.className = 'sim-status-badge approved';
+    } else {
+      badge.textContent = '❌ High Risk of Rejection';
+      badge.className = 'sim-status-badge rejected';
+    }
+  }
+
+  // FAQ Expand / Collapse
+  function toggleFaq(btn) {
+    const item = btn.parentElement;
+    const isActive = item.classList.contains('active');
+    
+    // Close other items
+    document.querySelectorAll('.faq-item').forEach(el => {
+      el.classList.remove('active');
+      el.querySelector('.faq-icon').textContent = '+';
+    });
+    
+    if (!isActive) {
+      item.classList.add('active');
+      btn.querySelector('.faq-icon').textContent = '−';
+    }
+  }
+
+  // Run once to initialize sliders
+  window.onload = function() {
+    updateSimulator();
+  };
+</script>
+</body>
+</html>

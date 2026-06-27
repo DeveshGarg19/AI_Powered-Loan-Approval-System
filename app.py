@@ -235,7 +235,7 @@ def login():
         session['user_id']   = user.id
         session['user_name'] = user.name
         session['user_email']= user.email
-        return redirect(url_for('home'))
+        return redirect(url_for('apply'))
 
     return render_template('login.html', success=request.args.get('success'))
 
@@ -289,8 +289,13 @@ def reset_password():
 # ─── Main Routes ─────────────────────────────────────────────────────────────
 
 @app.route('/')
-@login_required
 def home():
+    logged_in = 'user_id' in session
+    return render_template('landing.html', logged_in=logged_in, user_name=session.get('user_name'))
+
+@app.route('/apply')
+@login_required
+def apply():
     return render_template('index.html', user_name=session.get('user_name'))
 
 @app.route('/dashboard')
