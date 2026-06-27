@@ -3,6 +3,8 @@ Flask-SQLAlchemy
 Flask-Mail
 numpy
 pandas
-shap
+shap>=0.44.0
 scikit-learn
 psycopg2-binary
+numba>=0.58.0
+llvmlite>=0.41.0
