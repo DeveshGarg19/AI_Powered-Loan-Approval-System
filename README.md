@@ -1,6 +1,6 @@
 # 🏦 LoanIQ - AI-Powered Loan Approval System
 
-🚀 **Live Demo:** [loaniq-ai-powered-loan-approval-sys.vercel.app](https://loaniq-ai-powered-loan-approval-sys.vercel.app/)
+🚀 **Live Demo:** [loaniq-las.vercel.app](https://loaniq-las.vercel.app/)
 
 ---
 
