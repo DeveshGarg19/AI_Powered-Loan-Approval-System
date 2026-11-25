@@ -1,28 +1,60 @@
-import sys, subprocess, os
+import sys, subprocess, os, secrets, hmac, math
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
+from markupsafe import escape
 from werkzeug.security import generate_password_hash, check_password_hash
-import base64, io, random, string
-from datetime import datetime, timedelta, timezone
+import string
+from datetime import datetime, timedelta
 from functools import wraps
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def _load_dotenv(env_path):
+    """Load simple KEY=VALUE pairs from a local .env file without overriding existing env vars."""
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, encoding='utf-8') as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, val = line.split('=', 1)
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key:
+                os.environ.setdefault(key, val)
+
+_load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 app = Flask(__name__)
 
 # ─── Config ─────────────────────────────────────────────────────────────────
-app.secret_key = "loaniq_secret_key_2024"
+_secret_key = os.environ.get("SECRET_KEY")
+if not _secret_key:
+    print("⚠️ WARNING: SECRET_KEY environment variable is not set; using an ephemeral key.")
+    _secret_key = secrets.token_hex(32)
+app.secret_key = _secret_key
+
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = bool(
+    os.environ.get("VERCEL") or os.environ.get("SESSION_COOKIE_SECURE", "").lower() == "true"
+)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
 
 # Database Configuration
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 # Uses PostgreSQL if DATABASE_URL is present (perfect for Vercel persistence),
 # otherwise falls back to local SQLite for offline development.
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL:
-    # Fix potential postgres:// to postgresql:// scheme issue for SQLAlchemy
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = DATABASE_URL.strip().strip('"').strip("'")
+    # Explicitly select the psycopg2 driver (psycopg2-binary in requirements.txt)
+    for prefix in ("postgresql+psycopg://", "postgres+psycopg://", "postgresql://", "postgres://"):
+        if DATABASE_URL.startswith(prefix):
+            DATABASE_URL = "postgresql+psycopg2://" + DATABASE_URL[len(prefix):]
+            break
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 else:
     if os.environ.get("VERCEL"):
@@ -37,13 +69,12 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# ─── Gmail Config ────────────────────────────────────────────────────────────
-# IMPORTANT: Replace with your Gmail and App Password
-app.config['MAIL_SERVER']   = 'smtp.gmail.com'
-app.config['MAIL_PORT']     = 587
-app.config['MAIL_USE_TLS']  = True
-app.config['MAIL_USERNAME'] = 'garg.devesh0619@gmail.com'       # ← Your Gmail
-app.config['MAIL_PASSWORD'] = 'qtce qrrh ilcv lmvg'     # ← Gmail App Password
+# ─── Mail Config (loaded from environment) ──────────────────────────────────
+app.config['MAIL_SERVER']   = os.environ.get('MAIL_SERVER') or 'smtp.gmail.com'
+app.config['MAIL_PORT']     = int(os.environ.get('MAIL_PORT') or 587)
+app.config['MAIL_USE_TLS']  = (os.environ.get('MAIL_USE_TLS') or 'true').lower() in ('1', 'true', 'yes')
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
 
 db   = SQLAlchemy(app)
 mail = Mail(app)
@@ -106,7 +137,36 @@ def to_ist(dt):
         return ''
     return dt + IST_OFFSET
 
-# ─── Helper Functions ────────────────────────────────────────────────────────
+# ─── Security & Helper Functions ─────────────────────────────────────────────
+MAX_OTP_ATTEMPTS = 5
+MIN_PASSWORD_LEN = 8
+
+def get_csrf_token():
+    token = session.get('_csrf_token')
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session['_csrf_token'] = token
+    return token
+
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=get_csrf_token)
+
+@app.before_request
+def verify_csrf():
+    if request.method == 'POST':
+        session_token = session.get('_csrf_token')
+        form_token = request.form.get('csrf_token') or request.headers.get('X-CSRFToken')
+        if not session_token or not form_token or not hmac.compare_digest(session_token, form_token):
+            abort(403)
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    return response
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -116,21 +176,51 @@ def login_required(f):
     return decorated
 
 def generate_otp():
-    return ''.join(random.choices(string.digits, k=6))
+    return ''.join(secrets.choice(string.digits) for _ in range(6))
+
+def _verify_user_otp(user, entered_otp, attempts_key):
+    """Validate OTP with expiry check, constant-time comparison, and attempt limit."""
+    if not user or not user.otp or not user.otp_expiry:
+        return 'invalid'
+    if datetime.utcnow() > user.otp_expiry:
+        user.otp = None
+        user.otp_expiry = None
+        db.session.commit()
+        session.pop(attempts_key, None)
+        return 'expired'
+    if not hmac.compare_digest(user.otp, entered_otp.strip()):
+        attempts = session.get(attempts_key, 0) + 1
+        session[attempts_key] = attempts
+        if attempts >= MAX_OTP_ATTEMPTS:
+            user.otp = None
+            user.otp_expiry = None
+            db.session.commit()
+            session.pop(attempts_key, None)
+            return 'locked'
+        return 'mismatch'
+    session.pop(attempts_key, None)
+    return 'ok'
+
+def _ensure_mail_configured():
+    if not app.config.get('MAIL_USERNAME') or not app.config.get('MAIL_PASSWORD'):
+        raise RuntimeError("MAIL_USERNAME and MAIL_PASSWORD must be configured in environment variables.")
 
 def send_otp_email(email, name, otp, subject="Verify Your Email"):
+    _ensure_mail_configured()
+    safe_name = escape(name)
+    safe_subject = escape(subject)
     msg = Message(subject,
         sender=app.config['MAIL_USERNAME'],
         recipients=[email])
     msg.html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: #f9f9ff; border-radius: 16px;">
         <h2 style="color: #1a1a2e; text-align: center;">🏦 LoanIQ</h2>
-        <p style="color: #555;">Hello <b>{name}</b>,</p>
-        <p style="color: #555;">{subject}. Use the OTP below:</p>
+        <p style="color: #555;">Hello <b>{safe_name}</b>,</p>
+        <p style="color: #555;">{safe_subject}. Use the OTP below:</p>
         <div style="text-align: center; margin: 30px 0;">
             <span style="font-size: 36px; font-weight: bold; letter-spacing: 10px;
                 color: #6c63ff; background: #efefff; padding: 16px 32px;
-                border-radius: 12px; display: inline-block;">{otp}</span>
+                border-radius: 12px; display: inline-block;">{escape(otp)}</span>
         </div>
         <p style="color: #888; font-size: 13px; text-align: center;">
             This OTP is valid for <b>10 minutes</b>. Do not share it with anyone.
@@ -142,6 +232,8 @@ def send_otp_email(email, name, otp, subject="Verify Your Email"):
     mail.send(msg)
 
 def send_approval_email(email, name, approved, probability):
+    _ensure_mail_configured()
+    safe_name = escape(name)
     status = "✅ Approved" if approved else "❌ Rejected"
     color  = "#00d68f" if approved else "#ff4d6d"
     msg    = Message(f"LoanIQ — Your Loan Application Result: {status}",
@@ -150,7 +242,7 @@ def send_approval_email(email, name, approved, probability):
     msg.html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: #f9f9ff; border-radius: 16px;">
         <h2 style="color: #1a1a2e; text-align: center;">🏦 LoanIQ</h2>
-        <p style="color: #555;">Hello <b>{name}</b>,</p>
+        <p style="color: #555;">Hello <b>{safe_name}</b>,</p>
         <p style="color: #555;">Your loan application has been analyzed. Here is the result:</p>
         <div style="text-align: center; margin: 24px 0; padding: 20px;
             background: {'#e6fff5' if approved else '#fff0f3'};
@@ -172,10 +264,14 @@ def send_approval_email(email, name, approved, probability):
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        name     = request.form['name']
-        email    = request.form['email']
-        password = request.form['password']
+        name     = request.form.get('name', '').strip()
+        email    = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
 
+        if not name or not email:
+            return render_template('register.html', error="Name and email are required.")
+        if len(password) < MIN_PASSWORD_LEN:
+            return render_template('register.html', error=f"Password must be at least {MIN_PASSWORD_LEN} characters long.")
         if User.query.filter_by(email=email).first():
             return render_template('register.html', error="Email already registered!")
 
@@ -186,10 +282,16 @@ def register():
         user = User(name=name, email=email, password=hashed_pw,
                     otp=otp, otp_expiry=otp_expiry)
         db.session.add(user)
-        db.session.commit()
+        try:
+            send_otp_email(email, name, otp, "Verify Your LoanIQ Account")
+            db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            print(f"Registration email error: {exc}")
+            return render_template('register.html', error="Unable to send verification email right now. Please try again later.")
 
-        send_otp_email(email, name, otp, "Verify Your LoanIQ Account")
         session['verify_email'] = email
+        session.pop('verify_otp_attempts', None)
         return redirect(url_for('verify_otp'))
 
     return render_template('register.html')
@@ -201,18 +303,22 @@ def verify_otp():
         return redirect(url_for('register'))
 
     if request.method == 'POST':
-        entered_otp = request.form['otp']
+        entered_otp = request.form.get('otp', '')
         user        = User.query.filter_by(email=email).first()
+        status      = _verify_user_otp(user, entered_otp, 'verify_otp_attempts')
 
-        if not user:
-            return render_template('verify_otp.html', error="User not found.")
-        if datetime.utcnow() > user.otp_expiry:
-            return render_template('verify_otp.html', error="OTP expired. Please register again.")
-        if user.otp != entered_otp:
-            return render_template('verify_otp.html', error="Incorrect OTP. Try again.")
+        if status == 'invalid':
+            return render_template('verify_otp.html', email=email, error="No active OTP found. Please request a new verification code.")
+        if status == 'expired':
+            return render_template('verify_otp.html', email=email, error="OTP expired. Please request a new verification code.")
+        if status == 'locked':
+            return render_template('verify_otp.html', email=email, error="Too many incorrect attempts. OTP invalidated.")
+        if status == 'mismatch':
+            return render_template('verify_otp.html', email=email, error="Incorrect OTP. Try again.")
 
         user.is_verified = True
         user.otp         = None
+        user.otp_expiry  = None
         db.session.commit()
         session.pop('verify_email', None)
         return redirect(url_for('login', success="Email verified! Please login."))
@@ -222,8 +328,8 @@ def verify_otp():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email    = request.form['email']
-        password = request.form['password']
+        email    = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
         user     = User.query.filter_by(email=email).first()
 
         if not user or not check_password_hash(user.password, password):
@@ -232,9 +338,12 @@ def login():
             session['verify_email'] = email
             return redirect(url_for('verify_otp'))
 
-        session['user_id']   = user.id
-        session['user_name'] = user.name
-        session['user_email']= user.email
+        session.clear()
+        session.permanent = True
+        session['_csrf_token'] = secrets.token_urlsafe(32)
+        session['user_id']     = user.id
+        session['user_name']   = user.name
+        session['user_email']  = user.email
         return redirect(url_for('apply'))
 
     return render_template('login.html', success=request.args.get('success'))
@@ -247,17 +356,20 @@ def logout():
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        email = request.form['email']
+        email = request.form.get('email', '').strip().lower()
         user  = User.query.filter_by(email=email).first()
-        if not user:
-            return render_template('forgot_password.html', error="Email not found.")
+        if user:
+            otp              = generate_otp()
+            user.otp         = otp
+            user.otp_expiry  = datetime.utcnow() + timedelta(minutes=10)
+            db.session.commit()
+            try:
+                send_otp_email(email, user.name, otp, "Reset Your LoanIQ Password")
+            except Exception as exc:
+                print(f"Password reset email error: {exc}")
 
-        otp              = generate_otp()
-        user.otp         = otp
-        user.otp_expiry  = datetime.utcnow() + timedelta(minutes=10)
-        db.session.commit()
-        send_otp_email(email, user.name, otp, "Reset Your LoanIQ Password")
         session['reset_email'] = email
+        session.pop('reset_otp_attempts', None)
         return redirect(url_for('reset_password'))
 
     return render_template('forgot_password.html')
@@ -269,17 +381,24 @@ def reset_password():
         return redirect(url_for('forgot_password'))
 
     if request.method == 'POST':
-        otp          = request.form['otp']
-        new_password = request.form['new_password']
-        user         = User.query.filter_by(email=email).first()
+        otp          = request.form.get('otp', '')
+        new_password = request.form.get('new_password', '')
+        if len(new_password) < MIN_PASSWORD_LEN:
+            return render_template('reset_password.html', error=f"Password must be at least {MIN_PASSWORD_LEN} characters long.")
 
-        if not user or user.otp != otp:
-            return render_template('reset_password.html', error="Incorrect OTP.")
-        if datetime.utcnow() > user.otp_expiry:
-            return render_template('reset_password.html', error="OTP expired.")
+        user   = User.query.filter_by(email=email).first()
+        status = _verify_user_otp(user, otp, 'reset_otp_attempts')
 
-        user.password = generate_password_hash(new_password)
-        user.otp      = None
+        if status in ('invalid', 'mismatch'):
+            return render_template('reset_password.html', error="Incorrect or invalid OTP.")
+        if status == 'expired':
+            return render_template('reset_password.html', error="OTP expired. Please request a new reset code.")
+        if status == 'locked':
+            return render_template('reset_password.html', error="Too many incorrect attempts. Please request a new reset code.")
+
+        user.password   = generate_password_hash(new_password)
+        user.otp        = None
+        user.otp_expiry = None
         db.session.commit()
         session.pop('reset_email', None)
         return redirect(url_for('login', success="Password reset successful!"))
@@ -320,6 +439,19 @@ def dashboard():
 def emi():
     return render_template('emi.html', user_name=session.get('user_name'))
 
+def _parse_finite_float(data, field, min_val=None, max_val=None):
+    raw_val = data.get(field)
+    if raw_val is None or str(raw_val).strip() == '':
+        raise ValueError(f"{field.replace('_', ' ')} is required.")
+    val = float(raw_val)
+    if not math.isfinite(val):
+        raise ValueError(f"{field.replace('_', ' ')} must be a valid finite number.")
+    if min_val is not None and val < min_val:
+        raise ValueError(f"{field.replace('_', ' ')} must be at least {min_val}.")
+    if max_val is not None and val > max_val:
+        raise ValueError(f"{field.replace('_', ' ')} must be at most {max_val}.")
+    return val
+
 @app.route('/predict', methods=['POST'])
 @login_required
 def predict():
@@ -334,22 +466,35 @@ def predict():
 
         data = request.form
 
+        age              = _parse_finite_float(data, 'Age', 18, 100)
+        dependents       = _parse_finite_float(data, 'Dependents', 0, 20)
+        applicant_income = _parse_finite_float(data, 'Applicant_Income', 0)
+        loan_amount      = _parse_finite_float(data, 'Loan_Amount', 0)
+        loan_term        = _parse_finite_float(data, 'Loan_Term', 1, 480)
+        credit_score     = _parse_finite_float(data, 'Credit_Score', 300, 900)
+        dti_ratio        = _parse_finite_float(data, 'DTI_Ratio', 0.0, 1.0)
+        savings          = _parse_finite_float(data, 'Savings', 0)
+
+        education_level = data.get('Education_Level', '')
+        if education_level not in ('Graduate', 'Not Graduate'):
+            raise ValueError("Invalid Education Level selected.")
+
         raw = pd.DataFrame([{
-            'Gender':            data['Gender'],
-            'Age':               float(data['Age']),
-            'Marital_Status':    data['Marital_Status'],
-            'Dependents':        float(data['Dependents']),
-            'Education_Level':   data['Education_Level'],
-            'Employment_Status': data['Employment_Status'],
-            'Employer_Category': data['Employer_Category'],
-            'Applicant_Income':  float(data['Applicant_Income']),
-            'Loan_Amount':       float(data['Loan_Amount']),
-            'Loan_Term':         float(data['Loan_Term']),
-            'Loan_Purpose':      data['Loan_Purpose'],
-            'Property_Area':     data['Property_Area'],
-            'Credit_Score':      float(data['Credit_Score']),
-            'DTI_Ratio':         float(data['DTI_Ratio']),
-            'Savings':           float(data['Savings']),
+            'Gender':            data.get('Gender', ''),
+            'Age':               age,
+            'Marital_Status':    data.get('Marital_Status', ''),
+            'Dependents':        dependents,
+            'Education_Level':   education_level,
+            'Employment_Status': data.get('Employment_Status', ''),
+            'Employer_Category': data.get('Employer_Category', ''),
+            'Applicant_Income':  applicant_income,
+            'Loan_Amount':       loan_amount,
+            'Loan_Term':         loan_term,
+            'Loan_Purpose':      data.get('Loan_Purpose', ''),
+            'Property_Area':     data.get('Property_Area', ''),
+            'Credit_Score':      credit_score,
+            'DTI_Ratio':         dti_ratio,
+            'Savings':           savings,
         }])
 
         education_map = {'Graduate': 1, 'Not Graduate': 0}
@@ -396,11 +541,11 @@ def predict():
             user_id     = session['user_id'],
             approved    = bool(prediction),
             probability = probability,
-            income      = float(data['Applicant_Income']),
-            loan_amount = float(data['Loan_Amount']),
-            credit_score= float(data['Credit_Score']),
-            dti_ratio   = float(data['DTI_Ratio']),
-            loan_purpose= data['Loan_Purpose'],
+            income      = applicant_income,
+            loan_amount = loan_amount,
+            credit_score= credit_score,
+            dti_ratio   = dti_ratio,
+            loan_purpose= data.get('Loan_Purpose', ''),
             reasons     = ', '.join(reasons[:3])
         )
         db.session.add(app_record)
@@ -409,8 +554,8 @@ def predict():
         # Send result email
         try:
             send_approval_email(session['user_email'], session['user_name'], bool(prediction), probability)
-        except:
-            pass  # Don't fail if email fails
+        except Exception as mail_exc:
+            print(f"Approval email skipped/failed: {mail_exc}")
 
         # Extract features and SHAP values for modern dynamic browser-side rendering (Chart.js/ApexCharts)
         # This completely replaces the heavy matplotlib server-side rendering, saving 50+ MB of bundle space!
@@ -420,12 +565,6 @@ def predict():
         chart_features = [x[0].replace('_', ' ').title() for x in sorted_shap]
         chart_values = [round(x[1], 4) for x in sorted_shap]
 
-        session['result'] = {
-            'approved': bool(prediction), 'probability': probability,
-            'reasons': reasons, 'recommendations': recommendations,
-            'shap_dict': shap_dict, 'form_data': dict(data)
-        }
-
         return render_template('result.html',
             approved=bool(prediction), probability=probability,
             reasons=reasons, recommendations=recommendations,
@@ -433,19 +572,26 @@ def predict():
             user_name=session.get('user_name')
         )
 
-    except Exception as e:
+    except ValueError as ve:
+        return render_template('index.html', error=str(ve), user_name=session.get('user_name'))
+    except Exception:
         import traceback
         print(traceback.format_exc())
-        return render_template('index.html', error=str(e), user_name=session.get('user_name'))
+        return render_template(
+            'index.html',
+            error="Unable to analyze your application right now. Please verify your inputs and try again.",
+            user_name=session.get('user_name')
+        )
 
 if __name__ == '__main__':
+    debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
     if os.environ.get("FLASK_RUNNING") != "1":
         os.environ["FLASK_RUNNING"] = "1"
         import webbrowser
         from threading import Timer
         Timer(1.5, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
-        sys.exit(subprocess.call(
-            ["C:/Program Files/Python313/python.exe", "-m", "flask", "--app", __file__, "run", "--debug"],
-            shell=False
-        ))
-    app.run(debug=True)
+        cmd = [sys.executable, "-m", "flask", "--app", __file__, "run"]
+        if debug_mode:
+            cmd.append("--debug")
+        sys.exit(subprocess.call(cmd, shell=False))
+    app.run(debug=debug_mode)

@@ -30,6 +30,7 @@
     {% endif %}
 
     <form action="/predict" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
       <div class="form-section">
         <div class="section-title">👤 Personal Information</div>

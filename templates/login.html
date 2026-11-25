@@ -54,6 +54,7 @@
     {% if success %}<div class="success">✅ {{ success }}</div>{% endif %}
 
     <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <label>Email Address</label>
       <input type="email" name="email" placeholder="you@example.com" required/>
       <label>Password</label>
